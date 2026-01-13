@@ -99,7 +99,7 @@
                 <span class="text-sm font-medium opacity-80">Loading System...</span>
             </div>
 
-            <!-- Passcode Area Modified: Removed Hints -->
+            <!-- Passcode Area -->
             <div id="passcode-area" class="hidden fade-in w-full px-8">
                 <p class="mb-3 text-sm font-semibold opacity-90">กรุณากรอก Passcode</p>
                 <input type="password" id="passcode-input" class="w-full px-4 py-3 rounded-xl text-slate-800 text-center text-xl tracking-widest font-bold shadow-lg focus:outline-none focus:ring-4 focus:ring-white/30 mb-4 placeholder:text-slate-300 placeholder:font-normal placeholder:tracking-normal" placeholder="" maxlength="10">
@@ -145,7 +145,6 @@
                 </div>
                 
                 <form onsubmit="handleEmpLogin(event)" class="space-y-4">
-                    <!-- Name removed, Job Position added -->
                     <div>
                         <label class="inp-label">รหัสพนักงาน (ตัวเลขเท่านั้น)</label>
                         <input type="text" id="empId" class="inp-field" oninput="validateEmpId(this)" placeholder="ระบุรหัสพนักงาน" required>
@@ -531,7 +530,8 @@
             emp: null,
             cust: null,
             risks: [],
-            stats: {}
+            stats: {},
+            aiStrategies: null // New State for AI results
         };
 
         // --- INIT ---
@@ -749,8 +749,12 @@
             document.getElementById('displayYearly').innerText = '0';
         }
 
-        // --- 4. ANALYSIS ENGINE (Strict Logic Update) ---
-        function startAnalysis() {
+        // --- 4. ANALYSIS ENGINE (AI + FALLBACK) ---
+        
+        // 4.1 Strict Mode: User Gemini API Key
+        const API_KEY = "AIzaSyBYxHJ-HQ76axjzYRxdezXirHNwoNkRQmE"; // Frontend-only (ยอมรับความเสี่ยง)
+        
+        async function startAnalysis() {
             // Check Required Fields
             const reqFields = ['custName', 'custAge', 'custIncome'];
             for (let id of reqFields) {
@@ -773,16 +777,39 @@
 
             navTo('processing');
 
-            // Simulate Processing
-            setTimeout(() => {
-                performAnalysis();
-                navTo('dashboard');
-                generateRadarChart(); 
-            }, 3000);
+            // NEW: AI Async Flow
+            try {
+                // Gather Data first (Common for both AI and Legacy)
+                const d = gatherCustomerData();
+                appState.cust = d; // Basic info
+                
+                // Calculate Math Stats (Always uses legacy logic for hard numbers)
+                calculateMathStats(d);
+                
+                // Try AI
+                const aiResult = await analyzeWithGemini(d);
+                if (aiResult) {
+                     // Map AI Result
+                    mapAIResultToLegacyFormat(aiResult, d);
+                } else {
+                    throw new Error("Empty AI Result");
+                }
+                
+            } catch (e) {
+                console.warn("AI failed, fallback to rule-based", e);
+                // 🔁 Fallback (Logic เดิม)
+                const d = appState.cust || gatherCustomerData();
+                performLegacyAnalysis(d);
+            }
+
+            // Render Results
+            navTo('dashboard');
+            renderDashboard(); // Will adapt to AI content if present
+            generateRadarChart(); 
         }
 
-        function performAnalysis() {
-            // --- A. Gather Data ---
+        // 4.2 Helper: Gather Data (Extracted from old performAnalysis)
+        function gatherCustomerData() {
             const d = {
                 name: document.getElementById('custName').value,
                 age: parseFloat(document.getElementById('custAge').value),
@@ -799,7 +826,7 @@
                 role: document.getElementById('incomeRole').value,
                 childCount: parseFloat(document.getElementById('childCount').value)||0,
                 hasDep: document.querySelector('input[name="hasDependent"]:checked').value === 'yes',
-                // Fin (Split)
+                // Fin
                 savingCASA: parseFloat(document.getElementById('finSavingCASA').value)||0,
                 savingFixed: parseFloat(document.getElementById('finSavingFixed').value)||0,
                 investStock: parseFloat(document.getElementById('finInvestStock').value)||0,
@@ -811,110 +838,55 @@
                     personal: parseFloat(document.getElementById('debtPersonal').value)||0
                 }
             };
-
-            // Process Child Details
-            let childrenStudying = 0;
-            let childrenWorking = 0;
-            const childStatusInputs = document.querySelectorAll('.child-status');
-            childStatusInputs.forEach(sel => {
-                if(sel.value === 'studying') childrenStudying++;
-                else childrenWorking++;
-            });
-
+            
             // Calculated Values
             d.yIncome = (d.mIncome * 12) + d.bizProfit;
             d.totalDebt = d.debt.home + d.debt.car + d.debt.personal;
-            d.totalAsset = d.savingCASA + d.savingFixed + d.investStock + d.investFund; // Simple Asset Sum
+            d.totalAsset = d.savingCASA + d.savingFixed + d.investStock + d.investFund;
             d.netWorth = d.totalAsset - d.totalDebt;
-            d.liquid = d.savingCASA + d.savingFixed; // Liquidity definition
-            
-            // Policies Summation
+            d.liquid = d.savingCASA + d.savingFixed;
+
+            // Policy Sums
             const polRows = document.querySelectorAll('.policy-row');
-            let sumLife=0, sumHealth=0, sumCI=0, sumPA=0, sumPens=0;
-            
+            let sums = { life:0, health:0, ci:0, pa:0, pens:0 };
             polRows.forEach(row => {
                 const type = row.querySelector('.pol-type').value;
-                const sum = parseFloat(row.querySelector('.pol-sum').value)||0; // Guaranteed to exist via validation
-                
-                if(type.includes('ชีวิต') || type.includes('สะสมทรัพย์')) sumLife += sum;
-                if(type.includes('สุขภาพ')) sumHealth += sum;
-                if(type.includes('โรคร้ายแรง')) sumCI += sum;
-                if(type.includes('บำนาญ')) sumPens += sum;
+                const sum = parseFloat(row.querySelector('.pol-sum').value)||0;
+                if(type.includes('ชีวิต') || type.includes('สะสมทรัพย์')) sums.life += sum;
+                if(type.includes('สุขภาพ')) sums.health += sum;
+                if(type.includes('โรคร้ายแรง')) sums.ci += sum;
+                if(type.includes('บำนาญ')) sums.pens += sum;
             });
+            d.sums = sums;
 
-            // --- B. Risk Logic Engine ---
-            let risks = [];
+            // Child stats
+            let childrenStudying = 0;
+            document.querySelectorAll('.child-status').forEach(sel => {
+                if(sel.value === 'studying') childrenStudying++;
+            });
+            d.childrenStudying = childrenStudying;
 
-            // 1. Income Risk (Enhanced with Child Status)
-            let incomeScore = 20; 
-            if (d.role === 'main') incomeScore += 30;
-            if (childrenStudying > 0) incomeScore += (childrenStudying * 10); // Burden: Studying child
-            if (d.hasDep) incomeScore += 10;
-            if (d.job === 'เจ้าของกิจการ' || d.job === 'อาชีพอิสระ') incomeScore += 20; 
-            
-            // Deduct based on coverage
-            let incomeProtectionYears = d.yIncome > 0 ? sumLife / d.yIncome : 0;
-            if (incomeProtectionYears >= 5) incomeScore -= 50;
-            else if (incomeProtectionYears >= 3) incomeScore -= 30;
-            else if (incomeProtectionYears >= 1) incomeScore -= 10;
-            
-            risks.push({ name: 'Income Protection', score: clamp(incomeScore), desc: 'ความเสี่ยงด้านการขาดรายได้' });
+            return d;
+        }
 
-            // 2. Health Risk (Integrated CI Risk Factor)
-            let healthScore = 20;
-            if (d.age > 45) healthScore += 30;
-            else if (d.age > 35) healthScore += 15;
-            
-            // CI Risk Integration: If children are studying, CI impact is high
-            if (childrenStudying > 0) healthScore += 10; 
-
-            if (d.welfare === 'ไม่มี' || d.welfare === 'มี - วงเงินต่ำ') healthScore += 30;
-            else if (d.welfare === 'มี - วงเงินสูง') healthScore -= 20;
-            
-            if (sumHealth > 1000000) healthScore -= 40;
-            else if (sumHealth > 500000) healthScore -= 20;
-
-            risks.push({ name: 'Health Coverage', score: clamp(healthScore), desc: 'ความเพียงพอค่ารักษาพยาบาล' });
-
-            // 3. Retirement Risk (Using Investments)
-            let retScore = 20;
-            if (d.age > 50) retScore += 50;
-            else if (d.age > 40) retScore += 30;
-            else if (d.age > 30) retScore += 10;
-            
-            let wealthRatio = d.yIncome > 0 ? (d.liquid + d.investStock + d.investFund + sumPens) / d.yIncome : 0;
-            if (wealthRatio > 5) retScore -= 50;
-            else if (wealthRatio > 2) retScore -= 30;
-            
-            risks.push({ name: 'Retirement Wealth', score: clamp(retScore), desc: 'ความพร้อมเพื่อการเกษียณ' });
-
-            // 4. Debt Risk
+        // 4.3 Helper: Calculate Math Stats (Always deterministic)
+        function calculateMathStats(d) {
+             // Debt Risk
             let debtRatio = d.yIncome > 0 ? (d.totalDebt / d.yIncome) * 100 : 0;
-            let debtScore = 10;
-            if (debtRatio > 300) debtScore = 95; 
-            else if (debtRatio > 100) debtScore = 70;
-            else if (debtRatio > 50) debtScore = 40;
             
-            risks.push({ name: 'Debt Management', score: clamp(debtScore), desc: 'ภาระหนี้สินคงค้าง' });
-
-            // 5. Liquidity Risk (Saving vs Fixed logic)
+            // Liquidity Risk
             let monthlyExp = d.mIncome * 0.7;
             let liqMonths = monthlyExp > 0 ? d.liquid / monthlyExp : 0;
-            let liqScore = 10;
-            if (liqMonths < 1) liqScore = 90;
-            else if (liqMonths < 3) liqScore = 60;
-            else if (liqMonths < 6) liqScore = 30;
-            
-            risks.push({ name: 'Liquidity', score: clamp(liqScore), desc: 'สภาพคล่องฉุกเฉิน' });
 
-            // --- C. Asset Deep Dive Logic ---
+            // Yield Suggestion Flag
             let yieldSuggestion = false;
             if (d.savingCASA > 0 && d.savingFixed > 0) {
-                 if (d.savingCASA > (d.savingFixed * 3)) yieldSuggestion = true; // Too much in CASA
+                 if (d.savingCASA > (d.savingFixed * 3)) yieldSuggestion = true;
             } else if (d.savingCASA > 500000 && d.savingFixed === 0) {
                 yieldSuggestion = true;
             }
 
+            // Risk Appetite
             let riskAppetite = 'Conservative';
             const totalInvest = d.investStock + d.investFund;
             if (totalInvest > 0) {
@@ -922,17 +894,155 @@
                 else riskAppetite = 'Moderate';
             }
 
-            // --- D. Save State ---
-            appState.cust = d;
-            appState.risks = risks;
-            appState.stats = { 
-                debtRatio, 
-                liqMonths, 
-                yieldSuggestion, 
-                riskAppetite 
+            appState.stats = { debtRatio, liqMonths, yieldSuggestion, riskAppetite };
+        }
+
+        // 4.4 AI: Call Gemini
+        async function analyzeWithGemini(inputData) {
+            const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + API_KEY;
+
+            const payload = {
+                contents: [{
+                    role: "user",
+                    parts: [{
+                        text: buildAIPrompt(inputData)
+                    }]
+                }]
             };
 
-            renderDashboard();
+            const res = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            if (!res.ok) throw new Error("Gemini API error");
+
+            const json = await res.json();
+            const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
+            
+            // Clean markdown if present
+            const cleanText = text.replace(/```json/g, '').replace(/```/g, '');
+            return JSON.parse(cleanText); 
+        }
+
+        // 4.5 AI: Build Prompt
+        function buildAIPrompt(inputData) {
+            return `
+You are a professional financial analysis assistant.
+
+Rules:
+- Use ALL provided data.
+- Do NOT ignore any field.
+- Do NOT invent data.
+- Return JSON ONLY.
+- Risk types must be EXACTLY these 5 strings: 'Income Protection', 'Health Coverage', 'Retirement Wealth', 'Debt Management', 'Liquidity'.
+
+Analyze the following customer data:
+${JSON.stringify(inputData, null, 2)}
+
+Return JSON in this format:
+{
+  "risks": [
+    { 
+      "type": "Income Protection", 
+      "level": "Low | Medium | High | Critical", 
+      "reason": "Explain why based on data" 
+    }
+  ],
+  "recommendations": ["Strategy 1", "Strategy 2", "Strategy 3"],
+  "summary": "Short executive summary in Thai"
+}
+`;
+        }
+
+        // 4.6 AI: Map to Legacy Format
+        function mapAIResultToLegacyFormat(aiResult, d) {
+            // Map text levels to scores for Radar Chart
+            const levelMap = { 'Low': 20, 'Medium': 50, 'High': 80, 'Critical': 95 };
+            
+            // Ensure all 5 risks are present
+            const requiredRisks = ['Income Protection', 'Health Coverage', 'Retirement Wealth', 'Debt Management', 'Liquidity'];
+            
+            let risks = [];
+            requiredRisks.forEach(reqType => {
+                const found = aiResult.risks.find(r => r.type === reqType);
+                if (found) {
+                    risks.push({
+                        name: found.type,
+                        score: levelMap[found.level] || 50, // Default to 50 if unknown
+                        desc: found.reason
+                    });
+                } else {
+                    // Fallback if AI missed one (shouldn't happen with strict prompt)
+                    risks.push({ name: reqType, score: 20, desc: 'AI did not evaluate' });
+                }
+            });
+
+            appState.risks = risks;
+            appState.cust = d;
+            // Store AI recommendations for rendering
+            appState.aiStrategies = aiResult.recommendations; 
+        }
+
+        // 4.7 FALLBACK: Legacy Logic (Preserved)
+        function performLegacyAnalysis(d) {
+            // Recalculate everything to be safe
+            appState.cust = d;
+            calculateMathStats(d); // Stats are shared
+
+            // B. Risk Logic Engine (Rule-based)
+            let risks = [];
+
+            // 1. Income Risk
+            let incomeScore = 20; 
+            if (d.role === 'main') incomeScore += 30;
+            if (d.childrenStudying > 0) incomeScore += (d.childrenStudying * 10);
+            if (d.hasDep) incomeScore += 10;
+            if (d.job === 'เจ้าของกิจการ' || d.job === 'อาชีพอิสระ') incomeScore += 20; 
+            let incomeProtectionYears = d.yIncome > 0 ? d.sums.life / d.yIncome : 0;
+            if (incomeProtectionYears >= 5) incomeScore -= 50;
+            else if (incomeProtectionYears >= 3) incomeScore -= 30;
+            else if (incomeProtectionYears >= 1) incomeScore -= 10;
+            risks.push({ name: 'Income Protection', score: clamp(incomeScore), desc: 'ความเสี่ยงด้านการขาดรายได้' });
+
+            // 2. Health Risk
+            let healthScore = 20;
+            if (d.age > 45) healthScore += 30;
+            else if (d.age > 35) healthScore += 15;
+            if (d.childrenStudying > 0) healthScore += 10; 
+            if (d.welfare === 'ไม่มี' || d.welfare === 'มี - วงเงินต่ำ') healthScore += 30;
+            else if (d.welfare === 'มี - วงเงินสูง') healthScore -= 20;
+            if (d.sums.health > 1000000) healthScore -= 40;
+            else if (d.sums.health > 500000) healthScore -= 20;
+            risks.push({ name: 'Health Coverage', score: clamp(healthScore), desc: 'ความเพียงพอค่ารักษาพยาบาล' });
+
+            // 3. Retirement Risk
+            let retScore = 20;
+            if (d.age > 50) retScore += 50;
+            else if (d.age > 40) retScore += 30;
+            else if (d.age > 30) retScore += 10;
+            let wealthRatio = d.yIncome > 0 ? (d.liquid + d.investStock + d.investFund + d.sums.pens) / d.yIncome : 0;
+            if (wealthRatio > 5) retScore -= 50;
+            else if (wealthRatio > 2) retScore -= 30;
+            risks.push({ name: 'Retirement Wealth', score: clamp(retScore), desc: 'ความพร้อมเพื่อการเกษียณ' });
+
+            // 4. Debt Risk
+            let debtScore = 10;
+            if (appState.stats.debtRatio > 300) debtScore = 95; 
+            else if (appState.stats.debtRatio > 100) debtScore = 70;
+            else if (appState.stats.debtRatio > 50) debtScore = 40;
+            risks.push({ name: 'Debt Management', score: clamp(debtScore), desc: 'ภาระหนี้สินคงค้าง' });
+
+            // 5. Liquidity Risk
+            let liqScore = 10;
+            if (appState.stats.liqMonths < 1) liqScore = 90;
+            else if (appState.stats.liqMonths < 3) liqScore = 60;
+            else if (appState.stats.liqMonths < 6) liqScore = 30;
+            risks.push({ name: 'Liquidity', score: clamp(liqScore), desc: 'สภาพคล่องฉุกเฉิน' });
+
+            appState.risks = risks;
+            appState.aiStrategies = null; // Clear AI strategies
         }
 
         function clamp(num) {
@@ -1012,25 +1122,44 @@
             document.getElementById('badge-liq').innerText = lText;
             document.getElementById('badge-liq').className = `text-[10px] px-2 py-0.5 rounded font-bold text-white ${lColor}`;
 
-            // Recommendation Logic (AI Suggestion)
+            // Recommendation Logic (Mixed AI or Legacy)
             const recDiv = document.getElementById('recommendation-list');
+            const recHeader = recDiv.previousElementSibling; // H3 Header
+            
             recDiv.innerHTML = '';
             
-            // 1. Asset Deep Dive Suggestion
-            if(s.yieldSuggestion) {
-                recDiv.innerHTML += `<div class="flex gap-2 text-sm text-slate-700 bg-white p-2 rounded border border-slate-100 shadow-sm"><i class="fa-solid fa-chart-line text-brand-500 mt-0.5"></i> <div><b>เพิ่มผลตอบแทน (Yield):</b> ท่านมีเงินฝากออมทรัพย์สัดส่วนสูง ควรแบ่งไปลงทุนหรือฝากประจำเพื่อเพิ่มดอกเบี้ย</div></div>`;
-            }
+            if (appState.aiStrategies && appState.aiStrategies.length > 0) {
+                // --- CASE 1: AI Result ---
+                console.log("Rendering AI Result");
+                
+                // Update Header to show Gemini
+                recHeader.innerHTML = '<i class="fa-solid fa-robot text-brand-500"></i> คำแนะนำจาก Gemini AI';
+                
+                // Render AI Strategies
+                appState.aiStrategies.forEach(st => {
+                    recDiv.innerHTML += `<div class="flex gap-2 text-sm text-slate-700 bg-white p-2 rounded border border-slate-100 shadow-sm"><i class="fa-solid fa-robot text-brand-500 mt-0.5"></i> <div>${st}</div></div>`;
+                });
+            } else {
+                // --- CASE 2: Legacy Fallback ---
+                console.log("Rendering Legacy Result");
 
-            // 2. Income Logic
-            const incRisk = r.find(x=>x.name==='Income Protection');
-            if(incRisk && incRisk.score >= 50) {
-                recDiv.innerHTML += `<div class="flex gap-2 text-sm text-slate-700 bg-white p-2 rounded border border-slate-100 shadow-sm"><i class="fa-solid fa-user-shield text-brand-500 mt-0.5"></i> <div><b>คุ้มครองรายได้:</b> ภาระค่าใช้จ่ายครอบครัวสูง ควรพิจารณาประกันชีวิตให้ครอบคลุมรายได้ 3-5 ปี <span class="text-brand-600 font-bold">[ประกันชีวิตตลอดชีพ]</span></div></div>`;
-            }
+                // Update Header to show System
+                recHeader.innerHTML = '<i class="fa-solid fa-lightbulb text-yellow-500"></i> คำแนะนำจากระบบ (Rule-Based)';
 
-            // 3. Health Logic
-            const hltRisk = r.find(x=>x.name==='Health Coverage');
-            if(hltRisk && hltRisk.score >= 50) {
-                recDiv.innerHTML += `<div class="flex gap-2 text-sm text-slate-700 bg-white p-2 rounded border border-slate-100 shadow-sm"><i class="fa-solid fa-heart-pulse text-red-500 mt-0.5"></i> <div><b>ค่ารักษาพยาบาล:</b> สวัสดิการที่มีอาจไม่เพียงพอ (CI Risk) ควรเสริมประกันสุขภาพเหมาจ่ายหรือโรคร้ายแรง <span class="text-brand-600 font-bold">[ประกันสุขภาพแบบเหมาจ่าย]</span></div></div>`;
+                // Fallback: Legacy Logic
+                if(s.yieldSuggestion) {
+                    recDiv.innerHTML += `<div class="flex gap-2 text-sm text-slate-700 bg-white p-2 rounded border border-slate-100 shadow-sm"><i class="fa-solid fa-chart-line text-brand-500 mt-0.5"></i> <div><b>เพิ่มผลตอบแทน (Yield):</b> ท่านมีเงินฝากออมทรัพย์สัดส่วนสูง ควรแบ่งไปลงทุนหรือฝากประจำเพื่อเพิ่มดอกเบี้ย</div></div>`;
+                }
+
+                const incRisk = r.find(x=>x.name==='Income Protection');
+                if(incRisk && incRisk.score >= 50) {
+                    recDiv.innerHTML += `<div class="flex gap-2 text-sm text-slate-700 bg-white p-2 rounded border border-slate-100 shadow-sm"><i class="fa-solid fa-user-shield text-brand-500 mt-0.5"></i> <div><b>คุ้มครองรายได้:</b> ภาระค่าใช้จ่ายครอบครัวสูง ควรพิจารณาประกันชีวิตให้ครอบคลุมรายได้ 3-5 ปี <span class="text-brand-600 font-bold">[ประกันชีวิตตลอดชีพ]</span></div></div>`;
+                }
+
+                const hltRisk = r.find(x=>x.name==='Health Coverage');
+                if(hltRisk && hltRisk.score >= 50) {
+                    recDiv.innerHTML += `<div class="flex gap-2 text-sm text-slate-700 bg-white p-2 rounded border border-slate-100 shadow-sm"><i class="fa-solid fa-heart-pulse text-red-500 mt-0.5"></i> <div><b>ค่ารักษาพยาบาล:</b> สวัสดิการที่มีอาจไม่เพียงพอ (CI Risk) ควรเสริมประกันสุขภาพเหมาจ่ายหรือโรคร้ายแรง <span class="text-brand-600 font-bold">[ประกันสุขภาพแบบเหมาจ่าย]</span></div></div>`;
+                }
             }
 
             if(recDiv.innerHTML === '') recDiv.innerHTML = '<div class="text-green-600 font-bold flex items-center gap-2"><i class="fa-solid fa-check-circle"></i> ยอดเยี่ยม! ท่านมีการวางแผนการเงินที่ดี</div>';
@@ -1120,5 +1249,6 @@
     </script>
 </body>
 </html>
+
 
 
