@@ -751,8 +751,8 @@
 
         // --- 4. ANALYSIS ENGINE (AI + FALLBACK) ---
         
-        // 4.1 Strict Mode: User Gemini API Key
-        const API_KEY = "AIzaSyBYxHJ-HQ76axjzYRxdezXirHNwoNkRQmE"; // Frontend-only (ยอมรับความเสี่ยง)
+
+        
         
         async function startAnalysis() {
             // Check Required Fields
@@ -898,33 +898,26 @@
         }
 
         // 4.4 AI: Call Gemini
-        async function analyzeWithGemini(inputData) {
-            const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + API_KEY;
-
-            const payload = {
-                contents: [{
-                    role: "user",
-                    parts: [{
-                        text: buildAIPrompt(inputData)
-                    }]
-                }]
-            };
-
-            const res = await fetch(url, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            });
-
-            if (!res.ok) throw new Error("Gemini API error");
-
-            const json = await res.json();
-            const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
-            
-            // Clean markdown if present
-            const cleanText = text.replace(/```json/g, '').replace(/```/g, '');
-            return JSON.parse(cleanText); 
+async function analyzeWithGemini(inputData) {
+    const res = await fetch(
+        "https://uvlyxomlvdlemobvquku.supabase.co/functions/v1/smooth-endpoint",
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV2bHl4b21sdmRsZW1vYnZxdWt1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyNjgzOTEsImV4cCI6MjA4Mzg0NDM5MX0.IqG4yFU8T_gNl1vZ9Cl6iiCX8na06y_qSWeopg3guSA"
+            },
+            body: JSON.stringify({
+                prompt: buildAIPrompt(inputData)
+            })
         }
+    );
+
+    if (!res.ok) throw new Error("Edge Function error");
+
+    const result = await res.json();
+    return result;
+}
 
         // 4.5 AI: Build Prompt
         function buildAIPrompt(inputData) {
