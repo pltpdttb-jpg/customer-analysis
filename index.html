@@ -788,8 +788,17 @@
                 
                 // Try AI
                 const aiResult = await analyzeWithGemini(d);
-console.log("AI RESULT RAW >>>", aiResult);
+// DEBUG ON SCREEN (iPad friendly)
+document.body.insertAdjacentHTML(
+  'beforeend',
+  `<pre style="white-space:pre-wrap;font-size:12px;background:#000;color:#0f0;padding:10px">
+AI RESULT RAW >>> ${JSON.stringify(aiResult, null, 2)}
+</pre>`
+);
+
 if (aiResult) {
+  mapAIResultToLegacyFormat(aiResult, d);
+}
                      // Map AI Result
                     mapAIResultToLegacyFormat(aiResult, d);
                 } else {
