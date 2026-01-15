@@ -788,8 +788,7 @@
                 
                 // Try AI
                 const aiResult = await analyzeWithGemini(d);
-console.log("AI RESULT:", aiResult);
-alert("เชื่อม Edge Function ได้แล้ว");
+console.log("AI RESULT RAW >>>", aiResult);
 if (aiResult) {
                      // Map AI Result
                     mapAIResultToLegacyFormat(aiResult, d);
