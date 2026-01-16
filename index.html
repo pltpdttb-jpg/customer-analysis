@@ -77,7 +77,6 @@
             body { background: white; -webkit-print-color-adjust: exact; }
             * { font-family: 'Prompt', sans-serif !important; }
             .shadow-sm, .shadow-lg { box-shadow: none !important; border: 1px solid #ddd; }
-            /* Prevent rendering artifacts in PDF */
             .text-transparent { color: #000 !important; -webkit-text-fill-color: #000 !important; background: none !important; }
         }
     </style>
@@ -801,6 +800,7 @@
                 return;
             }
 
+            // Show Loading
             navTo('processing');
 
             try {
@@ -809,7 +809,7 @@
                 appState.cust = d;
                 calculateMathStats(d);
 
-                // 2. Call Edge Function
+                // 2. Call Edge Function (Fixed Logic)
                 const result = await callEdgeFunction(d);
                 
                 // 3. Map Result
@@ -819,67 +819,67 @@
                 console.warn("Using fallback logic:", error);
                 const d = appState.cust || gatherCustomerData();
                 performLegacyAnalysis(d);
+            } finally {
+                // 4. Ensure Loading is cleared and Dashboard is shown
+                navTo('dashboard');
+                renderDashboard();
+                generateRadarChart();
             }
-
-            // 4. Render
-            navTo('dashboard');
-            renderDashboard();
-            generateRadarChart();
         }
 
-        // --- 6. EDGE FUNCTION CALL ---
+        // --- 6. EDGE FUNCTION CALL (FIXED SYNTAX) ---
         async function callEdgeFunction(data) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 20000); // 20s
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 20000); // 20s
 
-    try {
-        const response = await fetch(SUPABASE_EDGE_URL, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV2bHl4b21sdmRsZW1vYnZxdWt1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyNjgzOTEsImV4cCI6MjA4Mzg0NDM5MX0.IqG4yFU8T_gNl1vZ9Cl6iiCX8na06y_qSWeopg3guSA"`
-            },
-            body: JSON.stringify(data),
-            signal: controller.signal
-        });
+            try {
+                const response = await fetch(SUPABASE_EDGE_URL, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
+                    },
+                    body: JSON.stringify(data),
+                    signal: controller.signal
+                });
 
-        if (!response.ok) throw new Error(`Server error: ${response.status}`);
-        const json = await response.json();
+                if (!response.ok) throw new Error(`Server error: ${response.status}`);
+                const json = await response.json();
 
-        if (!json || !json.risks || !json.recommendations) {
-            throw new Error("Invalid AI response");
+                if (!json || !json.risks || !json.recommendations) {
+                    throw new Error("Invalid AI response");
+                }
+
+                return json;
+            } finally {
+                clearTimeout(timeout);
+            }
         }
-
-        return json;
-    } finally {
-        clearTimeout(timeout);
-    }
-}
 
         function mapAIResultToLegacyFormat(aiResult, d) {
-    const levelMap = { 'Low': 20, 'Medium': 50, 'High': 80, 'Critical': 95 };
-    const expectedTypes = [
-        'Income Protection',
-        'Health Coverage',
-        'Retirement Wealth',
-        'Debt Management',
-        'Liquidity'
-    ];
+            const levelMap = { 'Low': 20, 'Medium': 50, 'High': 80, 'Critical': 95 };
+            const expectedTypes = [
+                'Income Protection',
+                'Health Coverage',
+                'Retirement Wealth',
+                'Debt Management',
+                'Liquidity'
+            ];
 
-    let risks = expectedTypes.map(type => {
-        const found = aiResult.risks?.find(r => r.type === type);
-        return {
-            name: type,
-            score: levelMap[found?.level] ?? 30,
-            desc: found?.reason ?? 'ไม่มีข้อมูลจาก AI'
-        };
-    });
+            // Safety check for AI response
+            let risks = [];
+            expectedTypes.forEach(type => {
+                const found = aiResult.risks?.find(r => r.type === type);
+                risks.push({
+                    name: type,
+                    score: levelMap[found?.level] ?? 30, // Default to 30 if missing
+                    desc: found?.reason ?? 'ไม่มีข้อมูลจาก AI'
+                });
+            });
 
-    appState.risks = risks;
-    appState.aiStrategies = Array.isArray(aiResult.recommendations)
-        ? aiResult.recommendations
-        : null;
-}
+            appState.risks = risks;
+            appState.aiStrategies = Array.isArray(aiResult.recommendations) ? aiResult.recommendations : null;
+        }
 
         // --- 7. FALLBACK LOGIC ---
         function performLegacyAnalysis(d) {
@@ -1026,8 +1026,9 @@
         function backToInput() { navTo('input'); }
 
         async function generatePDF() {
-            // Force fonts and layout ready
+            // Force fonts and layout ready - Robust waiting logic
             await document.fonts.ready;
+            await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
             
             Swal.fire({ 
                 title: 'กำลังสร้างไฟล์ PDF...', 
@@ -1060,13 +1061,10 @@
             chartCanvas.style.width = '100%';
 
             try {
-                // Wait for repaint
-                await document.fonts.ready;
-await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-await document.fonts.ready;
-await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-
-await html2pdf().set(opt).from(element).save();
+                // Wait for repaint after style change
+                await new Promise(r => setTimeout(r, 800));
+                
+                await html2pdf().set(opt).from(element).save();
                 
                 // Restore
                 chartCanvas.style.height = originalHeight;
