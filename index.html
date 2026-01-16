@@ -1,1257 +1,173 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Customer Analysis Assistant System</title>
-    
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- Icons & Libraries -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Customer Analysis Assistant System</title>
 
-    <!-- Config -->
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['Prompt', 'sans-serif'] },
-                    colors: {
-                        brand: { 50:'#f0f9ff', 100:'#e0f2fe', 500:'#0ea5e9', 600:'#0284c7', 700:'#0369a1', 900:'#0c4a6e' },
-                        accent: { 500:'#06b6d4', 600:'#0891b2' }
-                    },
-                    animation: {
-                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                    }
-                }
-            }
-        }
-    </script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    <style>
-        body { background-color: #f8fafc; -webkit-tap-highlight-color: transparent; font-family: 'Prompt', sans-serif; }
-        
-        /* Animations */
-        .slide-up { animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1); }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
-        .fade-in { animation: fadeIn 0.4s ease-in; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-        /* Form Styling */
-        .inp-label { display: block; font-size: 0.85rem; font-weight: 600; color: #334155; margin-bottom: 0.35rem; }
-        .inp-field { 
-            width: 100%; padding: 0.75rem; border-radius: 0.5rem; border: 1px solid #cbd5e1; 
-            background: #fff; transition: all 0.2s; font-size: 0.95rem; color: #1e293b;
-            appearance: none; /* Remove default arrow for cleaner look */
-        }
-        .inp-field:focus { outline: none; border-color: #0ea5e9; box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15); }
-        .inp-field.error { border-color: #ef4444; background-color: #fef2f2; }
-        .error-text { color: #ef4444; font-size: 0.75rem; margin-top: 0.25rem; display: none; }
-        
-        /* Select Dropdown custom arrow */
-        select.inp-field {
-            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-            background-position: right 0.5rem center;
-            background-repeat: no-repeat;
-            background-size: 1.5em 1.5em;
-            padding-right: 2.5rem;
-        }
-
-        /* Selected Option Highlight */
-        option:checked { background-color: #e0f2fe; color: #0284c7; font-weight: bold; }
-
-        /* Credit Footer */
-        .credit-footer {
-            position: fixed; bottom: 0; left: 0; width: 100%;
-            background: rgba(255,255,255,0.95); border-top: 1px solid #e2e8f0;
-            text-align: center; padding: 0.5rem; z-index: 50;
-            font-size: 0.7rem; color: #64748b; font-weight: 500;
-        }
-        
-        /* Print/PDF Tweaks */
-        @media print {
-            .no-print { display: none !important; }
-            body { background: white; }
-            .shadow-sm, .shadow-lg { box-shadow: none !important; border: 1px solid #ddd; }
-        }
-    </style>
+<style>
+body { font-family: 'Prompt', sans-serif; background:#f8fafc; }
+.hidden { display:none; }
+</style>
 </head>
-<body class="text-slate-800 h-screen flex flex-col overflow-hidden bg-slate-50">
 
-    <!-- VIEW 0: SPLASH SCREEN & PASSCODE -->
-    <section id="view-splash" class="absolute inset-0 z-50 bg-gradient-to-br from-brand-700 to-brand-500 flex flex-col items-center justify-center text-white p-6">
-        <div class="text-center slide-up w-full max-w-md">
-            <div class="w-24 h-24 bg-white/20 backdrop-blur-md rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl ring-4 ring-white/10">
-                <i class="fa-solid fa-chart-pie text-4xl text-white"></i>
-            </div>
-            <h1 class="text-3xl font-bold mb-2 tracking-tight">Welcome</h1>
-            <p class="text-lg opacity-90 mb-8 font-light">Customer Analysis Assistant System</p>
-            
-            <div id="loading-spinner" class="animate-pulse-slow mb-4 flex flex-col items-center">
-                <i class="fa-solid fa-circle-notch fa-spin text-3xl mb-3"></i> 
-                <span class="text-sm font-medium opacity-80">Loading System...</span>
-            </div>
+<body class="min-h-screen">
 
-            <!-- Passcode Area -->
-            <div id="passcode-area" class="hidden fade-in w-full px-8">
-                <p class="mb-3 text-sm font-semibold opacity-90">กรุณากรอก Passcode</p>
-                <input type="password" id="passcode-input" class="w-full px-4 py-3 rounded-xl text-slate-800 text-center text-xl tracking-widest font-bold shadow-lg focus:outline-none focus:ring-4 focus:ring-white/30 mb-4 placeholder:text-slate-300 placeholder:font-normal placeholder:tracking-normal" placeholder="" maxlength="10">
-                <button onclick="checkPasscode()" class="w-full bg-white text-brand-600 font-bold py-3.5 rounded-xl shadow-lg hover:bg-brand-50 transition-transform active:scale-95">เข้าสู่ระบบ</button>
-                <p class="mt-8 text-[10px] opacity-60">Powered by PRU Academy [ttb training team]</p>
-            </div>
-        </div>
-    </section>
+<header class="bg-white shadow px-4 py-3 font-bold flex justify-between">
+  <div>CAAS AI</div>
+  <button onclick="location.reload()"><i class="fa-solid fa-power-off"></i></button>
+</header>
 
-    <!-- HEADER -->
-    <header id="main-header" class="hidden bg-white shadow-sm z-40 shrink-0 border-b border-slate-100 sticky top-0">
-        <div class="px-4 py-3 flex justify-between items-center max-w-6xl mx-auto">
-            <div class="flex items-center gap-3">
-                <div class="w-9 h-9 bg-brand-600 rounded-lg flex items-center justify-center shadow-md shadow-brand-500/20 text-white">
-                    <i class="fa-solid fa-chart-simple text-sm"></i>
-                </div>
-                <div>
-                    <h1 class="font-bold text-base leading-tight text-slate-800">CAAS AI</h1>
-                    <p class="text-[10px] text-slate-500 font-medium">Professional Assistant</p>
-                </div>
-            </div>
-            <div class="flex items-center gap-3">
-                <div id="user-display" class="hidden md:flex flex-col items-end mr-2 text-right">
-                    <span class="text-xs font-bold text-slate-700" id="header-emp-job">Guest</span>
-                    <span class="text-[10px] text-slate-400" id="header-emp-zone">-</span>
-                </div>
-                <button onclick="resetSystem()" class="text-slate-400 hover:text-red-500 transition-colors px-2 py-1" title="Logout">
-                    <i class="fa-solid fa-power-off"></i>
-                </button>
-            </div>
-        </div>
-    </header>
+<main class="max-w-3xl mx-auto p-4 space-y-6">
 
-    <!-- MAIN CONTAINER -->
-    <main id="main-container" class="flex-1 overflow-y-auto relative pb-12 hidden scroll-smooth">
-        
-        <!-- VIEW 1: EMP LOGIN -->
-        <section id="view-login" class="min-h-full flex flex-col items-center justify-center p-6 slide-up">
-            <div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 border border-slate-100">
-                <div class="text-center mb-6">
-                    <h2 class="text-xl font-bold text-slate-800">ระบุข้อมูลพนักงาน</h2>
-                    <p class="text-xs text-slate-500 mt-1">เพื่อบันทึกสถิติการใช้งานระบบ</p>
-                </div>
-                
-                <form onsubmit="handleEmpLogin(event)" class="space-y-4">
-                    <div>
-                        <label class="inp-label">รหัสพนักงาน (ตัวเลขเท่านั้น)</label>
-                        <input type="text" id="empId" class="inp-field" oninput="validateEmpId(this)" placeholder="ระบุรหัสพนักงาน" required>
-                        <div class="error-text">กรุณากรอกเฉพาะตัวเลข</div>
-                    </div>
-                    <div>
-                        <label class="inp-label">ตำแหน่งงาน</label>
-                        <select id="empJob" class="inp-field" required>
-                            <option value="">เลือกตำแหน่ง</option>
-                            <option value="CFSA">CFSA</option>
-                            <option value="CISA">CISA</option>
-                            <option value="BM">BM</option>
-                            <option value="Wealth">Wealth</option>
-                            <option value="PB">PB</option>
-                            <option value="IS IA">IS IA</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="inp-label">RH สังกัด</label>
-                            <select id="empRH" class="inp-field" onchange="updateZones()" required>
-                                <option value="">เลือก RH</option>
-                                <option value="RH1">RH1</option><option value="RH2">RH2</option>
-                                <option value="RH3">RH3</option><option value="RH4">RH4</option><option value="RH5">RH5</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="inp-label">Zone</label>
-                            <select id="empZone" class="inp-field" disabled required>
-                                <option value="">รอเลือก RH</option>
-                            </select>
-                        </div>
-                    </div>
-                    <button type="submit" class="w-full bg-brand-600 hover:bg-brand-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-brand-500/20 transition-all mt-2">
-                        เข้าสู่เมนูหลัก <i class="fa-solid fa-arrow-right ml-2"></i>
-                    </button>
-                </form>
-            </div>
-        </section>
+<!-- INPUT -->
+<section id="view-input" class="space-y-4">
+  <input id="custName" class="border p-2 w-full" placeholder="ชื่อลูกค้า">
+  <input id="custAge" type="number" class="border p-2 w-full" placeholder="อายุ">
+  <input id="custIncome" type="number" class="border p-2 w-full" placeholder="รายได้ต่อเดือน">
 
-        <!-- VIEW 2: CUSTOMER INPUT -->
-        <section id="view-input" class="hidden max-w-4xl mx-auto p-4 pb-24 fade-in">
-            <div class="flex items-center justify-between mb-6">
-                <h2 class="text-xl font-bold text-slate-800 flex items-center gap-2">
-                    <span class="w-1.5 h-6 bg-brand-500 rounded-full"></span> ข้อมูลลูกค้า
-                </h2>
-                <button type="button" onclick="clearForm()" class="text-xs text-red-500 font-medium hover:bg-red-50 px-3 py-1.5 rounded-lg transition border border-red-100">
-                    <i class="fa-solid fa-rotate-left"></i> ล้างค่า
-                </button>
-            </div>
+  <!-- ตัวอย่าง field เดิม (ไม่ตัด) -->
+  <input id="custJob" class="border p-2 w-full" placeholder="อาชีพ">
+  <input id="saving" type="number" class="border p-2 w-full" placeholder="เงินฝาก">
+  <input id="fund" type="number" class="border p-2 w-full" placeholder="กองทุนรวม">
+  <input id="family" class="border p-2 w-full" placeholder="ภาระครอบครัว">
+  <textarea id="insurance" class="border p-2 w-full" placeholder="ประกันที่มีอยู่"></textarea>
 
-            <form id="form-customer" class="space-y-5">
-                
-                <!-- 1. Profile -->
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div class="bg-slate-50 px-5 py-3 border-b border-slate-100 flex items-center gap-2 text-sm font-bold text-slate-700">
-                        <i class="fa-solid fa-id-card text-brand-500"></i> ข้อมูลส่วนตัว & อาชีพ
-                    </div>
-                    <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="md:col-span-2">
-                            <label class="inp-label">ชื่อนามสมมุติ</label>
-                            <input type="text" id="custName" class="inp-field" placeholder="เช่น คุณเอ" required>
-                        </div>
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="inp-label">อายุ (ปี)</label>
-                                <input type="number" id="custAge" class="inp-field" oninput="validateNumber(this)" placeholder="เช่น 35" required>
-                                <div class="error-text">กรุณาระบุตัวเลขเท่านั้น</div>
-                            </div>
-                            <div>
-                                <label class="inp-label">เพศ</label>
-                                <select id="custGender" class="inp-field">
-                                    <option value="Male">ชาย</option><option value="Female">หญิง</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div>
-                            <label class="inp-label">อาชีพ</label>
-                            <select id="custJob" class="inp-field" onchange="toggleBizSection()">
-                                <option value="พนักงานบริษัท">พนักงานบริษัท</option>
-                                <option value="ข้าราชการ">ข้าราชการ/รัฐวิสาหกิจ</option>
-                                <option value="เจ้าของกิจการ">เจ้าของกิจการ</option>
-                                <option value="อาชีพอิสระ">อาชีพอิสระ/ฟรีแลนซ์</option>
-                                <option value="วิชาชีพเฉพาะ">วิชาชีพเฉพาะ (แพทย์/วิศวกร)</option>
-                                <option value="เกษตรกร">เกษตรกร</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="inp-label">รายได้ต่อเดือน (บาท)</label>
-                            <input type="number" id="custIncome" class="inp-field" oninput="validateNumber(this); calcYearly()" placeholder="0" required>
-                            <div class="text-xs text-brand-600 font-semibold mt-1 bg-brand-50 inline-block px-2 py-1 rounded">
-                                รายได้ต่อปีประมาณ: <span id="displayYearly">0</span> บาท
-                            </div>
-                            <div class="error-text">กรุณาระบุตัวเลขเท่านั้น</div>
-                        </div>
-                        <div class="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="inp-label">สวัสดิการที่มี</label>
-                                <select id="custWelfare" class="inp-field">
-                                    <option value="ไม่มี">ไม่มี/สิทธิพื้นฐาน</option>
-                                    <option value="มี - วงเงินสูง">มี - วงเงินสูง (High)</option>
-                                    <option value="มี - วงเงินกลาง">มี - วงเงินกลาง (Medium)</option>
-                                    <option value="มี - วงเงินต่ำ">มี - วงเงินต่ำ (Low)</option>
-                                    <option value="มี - ทุนประกันต่อปี">มี - จำกัดงบต่อปี</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="inp-label">วงเงินสวัสดิการ (ระบุหากทราบ)</label>
-                                <input type="number" id="welfareAmount" class="inp-field" oninput="validateNumber(this)" placeholder="บาท">
-                                <div class="error-text">กรุณาระบุตัวเลขเท่านั้น</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+  <button onclick="startAnalysis()" class="bg-blue-600 text-white w-full py-3 rounded">
+    วิเคราะห์ด้วย AI
+  </button>
+</section>
 
-                <!-- 1.1 Business Specific (Conditional) -->
-                <div id="sec-biz" class="hidden bg-orange-50 rounded-xl shadow-sm border border-orange-200 overflow-hidden">
-                    <div class="px-5 py-3 border-b border-orange-100 flex items-center gap-2 text-sm font-bold text-orange-800">
-                        <i class="fa-solid fa-briefcase"></i> ข้อมูลธุรกิจ (เฉพาะเจ้าของกิจการ)
-                    </div>
-                    <div class="p-5 grid grid-cols-2 gap-4">
-                        <div class="col-span-2"><label class="inp-label">ประเภทธุรกิจ</label><input type="text" id="bizType" class="inp-field" placeholder="ระบุประเภทธุรกิจ"></div>
-                        <div><label class="inp-label">ทุนจดทะเบียน</label><input type="number" id="bizCapital" class="inp-field" oninput="validateNumber(this)"></div>
-                        <div><label class="inp-label">กำไรต่อปี (ประมาณการ)</label><input type="number" id="bizProfit" class="inp-field" oninput="validateNumber(this)"></div>
-                    </div>
-                </div>
+<!-- LOADING -->
+<section id="view-processing" class="hidden fixed inset-0 bg-white/80 flex items-center justify-center">
+  <i class="fa-solid fa-circle-notch fa-spin text-4xl text-blue-600"></i>
+</section>
 
-                <!-- 2. Family (Enhanced) -->
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div class="bg-slate-50 px-5 py-3 border-b border-slate-100 flex items-center gap-2 text-sm font-bold text-slate-700">
-                        <i class="fa-solid fa-users text-brand-500"></i> ข้อมูลครอบครัว
-                    </div>
-                    <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label class="inp-label">สถานภาพ</label>
-                            <select id="famStatus" class="inp-field">
-                                <option value="โสด">โสด</option>
-                                <option value="สมรส">สมรส</option>
-                                <option value="หย่าร้าง">หย่าร้าง/หม้าย</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="inp-label">บทบาทรายได้ในครอบครัว</label>
-                            <select id="incomeRole" class="inp-field">
-                                <option value="main">เป็นเสาหลัก (หารายได้หลัก)</option>
-                                <option value="co">หารายได้ร่วมกัน</option>
-                                <option value="dependent">ไม่มีรายได้/เป็นผู้พึ่งพา</option>
-                            </select>
-                        </div>
-                        <div class="md:col-span-2">
-                            <label class="inp-label">จำนวนบุตร</label>
-                            <input type="number" id="childCount" class="inp-field" oninput="validateNumber(this); generateChildRows()" placeholder="0">
-                            <div class="error-text">กรุณาระบุตัวเลขเท่านั้น</div>
-                            <!-- Dynamic Child Rows -->
-                            <div id="child-details-container" class="mt-3 space-y-3"></div>
-                        </div>
-                        <div class="md:col-span-2">
-                            <label class="inp-label">บุคคลที่ต้องดูแล (พ่อแม่/คนพิการ)</label>
-                            <div class="flex gap-4 mt-2">
-                                <label class="flex items-center gap-2 cursor-pointer bg-slate-50 px-3 py-2 rounded border border-slate-200 w-full justify-center has-checked:bg-brand-50 has-checked:border-brand-300 transition-colors">
-                                    <input type="radio" name="hasDependent" value="no" checked class="accent-brand-600 w-4 h-4"> <span>ไม่มี</span>
-                                </label>
-                                <label class="flex items-center gap-2 cursor-pointer bg-slate-50 px-3 py-2 rounded border border-slate-200 w-full justify-center has-checked:bg-brand-50 has-checked:border-brand-300 transition-colors">
-                                    <input type="radio" name="hasDependent" value="yes" class="accent-brand-600 w-4 h-4"> <span>มี</span>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+<!-- RESULT -->
+<section id="view-result" class="hidden space-y-4">
+  <h2 id="res-name" class="text-xl font-bold"></h2>
+  <p id="res-meta"></p>
 
-                <!-- 3. Financial & Debt (Split Logic) -->
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div class="bg-slate-50 px-5 py-3 border-b border-slate-100 flex items-center gap-2 text-sm font-bold text-slate-700">
-                        <i class="fa-solid fa-coins text-brand-500"></i> การเงิน & หนี้สิน
-                    </div>
-                    <div class="p-5 space-y-4">
-                        <!-- Split Savings & Investment -->
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="space-y-3 p-3 bg-slate-50 rounded-lg border border-slate-100">
-                                <label class="inp-label text-brand-600 border-b border-slate-200 pb-1 mb-2">เงินออม (Savings)</label>
-                                <div>
-                                    <label class="inp-label text-xs">เงินฝากออมทรัพย์</label>
-                                    <input type="number" id="finSavingCASA" class="inp-field" oninput="validateNumber(this)" placeholder="บาท">
-                                </div>
-                                <div>
-                                    <label class="inp-label text-xs">เงินฝากประจำ</label>
-                                    <input type="number" id="finSavingFixed" class="inp-field" oninput="validateNumber(this)" placeholder="บาท">
-                                </div>
-                            </div>
-                            <div class="space-y-3 p-3 bg-slate-50 rounded-lg border border-slate-100">
-                                <label class="inp-label text-brand-600 border-b border-slate-200 pb-1 mb-2">เงินลงทุน (Investments)</label>
-                                <div>
-                                    <label class="inp-label text-xs">หุ้น (Stocks)</label>
-                                    <input type="number" id="finInvestStock" class="inp-field" oninput="validateNumber(this)" placeholder="บาท">
-                                </div>
-                                <div>
-                                    <label class="inp-label text-xs">กองทุนรวม (Funds)</label>
-                                    <input type="number" id="finInvestFund" class="inp-field" oninput="validateNumber(this)" placeholder="บาท">
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="border-t border-dashed border-slate-200 pt-4">
-                            <label class="inp-label text-red-500 mb-3 block flex items-center gap-2"><i class="fa-solid fa-receipt"></i> รายละเอียดภาระหนี้สินคงค้าง</label>
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                <div><label class="inp-label text-xs">หนี้บ้าน</label><input type="number" id="debtHome" class="inp-field text-sm" placeholder="ยอดคงเหลือ" oninput="validateNumber(this)"></div>
-                                <div><label class="inp-label text-xs">หนี้รถยนต์</label><input type="number" id="debtCar" class="inp-field text-sm" placeholder="ยอดคงเหลือ" oninput="validateNumber(this)"></div>
-                                <div><label class="inp-label text-xs">บัตรเครดิต/สินเชื่อบุคคล</label><input type="number" id="debtPersonal" class="inp-field text-sm" placeholder="ยอดคงเหลือ" oninput="validateNumber(this)"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+  <div id="recommendation-list" class="space-y-2"></div>
 
-                <!-- 4. Insurance Portfolio -->
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    <div class="bg-slate-50 px-5 py-3 border-b border-slate-100 flex items-center justify-between">
-                        <div class="flex items-center gap-2 text-sm font-bold text-slate-700">
-                            <i class="fa-solid fa-shield-heart text-brand-500"></i> ประกันที่มีอยู่
-                        </div>
-                        <button type="button" onclick="addPolicyRow()" class="text-xs bg-white text-brand-600 px-3 py-1.5 rounded shadow-sm hover:bg-brand-50 font-bold border border-brand-100 transition-colors">
-                            <i class="fa-solid fa-plus"></i> เพิ่มกรมธรรม์
-                        </button>
-                    </div>
-                    <div class="p-5">
-                        <div id="policy-container" class="space-y-3">
-                            <!-- Dynamic Rows -->
-                        </div>
-                        <div id="empty-policy-msg" class="text-center text-slate-400 text-sm py-6 border-2 border-dashed border-slate-100 rounded-xl bg-slate-50/50">
-                            <i class="fa-regular fa-folder-open text-xl mb-1"></i><br>
-                            ยังไม่มีข้อมูลกรมธรรม์
-                        </div>
-                    </div>
-                </div>
+  <button onclick="generatePDF()" class="bg-slate-800 text-white px-4 py-2 rounded">
+    Export PDF
+  </button>
+</section>
 
-                <div class="pt-4 pb-12">
-                    <button type="button" onclick="startAnalysis()" class="w-full bg-gradient-to-r from-brand-600 to-brand-500 hover:from-brand-700 hover:to-brand-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-brand-500/30 text-lg transition-all active:scale-[0.98] flex items-center justify-center gap-3">
-                        <i class="fa-solid fa-wand-magic-sparkles"></i> ประมวลผลวิเคราะห์ (AI)
-                    </button>
-                </div>
-            </form>
-        </section>
+</main>
 
-        <!-- VIEW 3: PROCESSING -->
-        <section id="view-processing" class="hidden min-h-full flex flex-col items-center justify-center p-6 bg-white/60 backdrop-blur-md fixed inset-0 z-50">
-            <div class="text-center">
-                <div class="relative w-24 h-24 mx-auto mb-6">
-                    <div class="absolute inset-0 border-4 border-brand-100 rounded-full"></div>
-                    <div class="absolute inset-0 border-4 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
-                    <i class="fa-solid fa-brain absolute inset-0 flex items-center justify-center text-3xl text-brand-500 animate-pulse"></i>
-                </div>
-                <h3 class="text-xl font-bold text-slate-800 mb-2">AI กำลังวิเคราะห์ข้อมูล...</h3>
-                <p class="text-slate-500 text-sm">กำลังประมวลผลความเสี่ยงและจัดทำคำแนะนำ</p>
-            </div>
-        </section>
+<script>
+/* ===== STATE ===== */
+const appState = {
+  cust: null,
+  aiResult: []
+};
 
-        <!-- VIEW 4: DASHBOARD RESULT -->
-        <section id="view-dashboard" class="hidden min-h-full pb-32 fade-in print:pb-0">
-            <!-- Summary Header -->
-            <div class="bg-slate-800 text-white p-6 rounded-b-[2.5rem] shadow-xl mb-6 relative overflow-hidden print:bg-slate-800 print:text-white print:rounded-none">
-                <div class="absolute top-0 right-0 w-40 h-40 bg-brand-500/20 rounded-full -mr-10 -mt-10 blur-2xl"></div>
-                <div class="relative z-10">
-                    <div class="flex justify-between items-start mb-4">
-                        <div>
-                            <h2 id="res-name" class="text-2xl font-bold text-white">คุณลูกค้า</h2>
-                            <p class="text-slate-300 text-sm opacity-90 mt-1" id="res-meta">Age - | Occupation</p>
-                        </div>
-                        <div class="text-right">
-                            <div class="text-[10px] text-slate-400 uppercase tracking-widest font-semibold">Risk Score</div>
-                            <div id="res-score" class="text-4xl font-bold text-brand-400 mt-1">0<span class="text-lg text-slate-500 font-normal">/100</span></div>
-                        </div>
-                    </div>
-                    <!-- Wealth Summary (Calculated) -->
-                    <div class="grid grid-cols-3 gap-3 bg-white/10 rounded-2xl p-4 text-center backdrop-blur-sm border border-white/5 shadow-inner">
-                        <div>
-                            <div class="text-[10px] text-slate-300">สินทรัพย์รวม</div>
-                            <div id="res-asset" class="font-bold text-sm text-green-300 mt-1">0</div>
-                        </div>
-                        <div>
-                            <div class="text-[10px] text-slate-300">หนี้สินรวม</div>
-                            <div id="res-debt" class="font-bold text-sm text-red-300 mt-1">0</div>
-                        </div>
-                        <div>
-                            <div class="text-[10px] text-slate-300">Net Worth</div>
-                            <div id="res-networth" class="font-bold text-sm text-white mt-1">0</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="max-w-4xl mx-auto px-4 space-y-6 print:px-8">
-                
-                <!-- Radar Chart -->
-                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 relative print:border-slate-300 print:shadow-none">
-                    <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-radar text-brand-500"></i> วิเคราะห์ความเสี่ยง 5 ด้าน</h3>
-                    <div class="h-[300px] w-full flex justify-center">
-                        <canvas id="radarChart"></canvas>
-                    </div>
-                </div>
-
-                <!-- Top Risks -->
-                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 print:border-slate-300 print:shadow-none print:break-inside-avoid">
-                    <h3 class="font-bold text-slate-800 mb-4 flex items-center gap-2 text-lg">
-                        <i class="fa-solid fa-triangle-exclamation text-orange-500"></i> ความเสี่ยงที่น่ากังวลสูงสุด
-                    </h3>
-                    <div id="top-risks-container" class="space-y-4">
-                        <!-- Dynamic Content -->
-                    </div>
-                </div>
-
-                <!-- Ratios -->
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 print:break-inside-avoid">
-                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 print:border-slate-300">
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="text-xs font-bold text-slate-500 uppercase">ภาระหนี้สิน (Debt Ratio)</span>
-                            <span id="badge-debt" class="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-bold">-</span>
-                        </div>
-                        <div class="text-2xl font-bold text-slate-800 mb-2" id="val-debt">0%</div>
-                        <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                            <div id="bar-debt" class="bg-brand-500 h-2 rounded-full transition-all duration-1000" style="width: 0%"></div>
-                        </div>
-                    </div>
-                    <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 print:border-slate-300">
-                        <div class="flex justify-between items-center mb-2">
-                            <span class="text-xs font-bold text-slate-500 uppercase">สภาพคล่อง (Liquidity)</span>
-                            <span id="badge-liq" class="text-[10px] px-2 py-0.5 rounded bg-slate-100 text-slate-600 font-bold">-</span>
-                        </div>
-                        <div class="text-2xl font-bold text-slate-800 mb-2" id="val-liq">0 เท่า</div>
-                        <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                            <div id="bar-liq" class="bg-brand-500 h-2 rounded-full transition-all duration-1000" style="width: 0%"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- AI Recommendations -->
-                <div class="bg-gradient-to-br from-brand-50 to-white p-6 rounded-2xl border border-brand-100 shadow-sm print:border-brand-200 print:break-inside-avoid">
-                    <h3 class="font-bold text-brand-800 mb-4 flex items-center gap-2"><i class="fa-solid fa-lightbulb text-yellow-500"></i> คำแนะนำจากระบบ (AI Suggestion)</h3>
-                    <div id="recommendation-list" class="space-y-3">
-                        <!-- Dynamic Content -->
-                    </div>
-                </div>
-
-            </div>
-
-            <!-- Action Bar (Hidden in PDF) -->
-            <div class="fixed bottom-8 w-full px-4 z-30 pointer-events-none no-print">
-                <div class="max-w-4xl mx-auto flex gap-3 pointer-events-auto shadow-2xl rounded-2xl bg-white p-2 border border-slate-100">
-                    <button onclick="backToInput()" class="flex-1 bg-slate-50 text-slate-600 font-bold py-3 rounded-xl hover:bg-slate-100 text-sm transition-colors"><i class="fa-solid fa-pen-to-square"></i> แก้ไขข้อมูล</button>
-                    <button onclick="generatePDF()" class="flex-[2] bg-slate-800 text-white font-bold py-3 rounded-xl hover:bg-slate-900 text-sm shadow-lg shadow-slate-500/30 transition-colors"><i class="fa-solid fa-file-pdf"></i> สร้างรายงาน PDF</button>
-                </div>
-            </div>
-        </section>
-
-    </main>
-
-    <!-- FIXED FOOTER CREDIT -->
-    <div class="credit-footer no-print">
-        Powered by <strong class="text-brand-600">PRU Academy</strong> [ttb training team]
-    </div>
-
-    <!-- SCRIPT -->
-    <script>
-        // --- CONSTANTS ---
-        const rhData = {
-            "RH1": ["Zone จตุจักร", "Zone ธนบุรี", "Zone บางกะปิ", "Zone สาทร", "Zone สุขุมวิท"],
-            "RH2": ["Zone ชลบุรี", "Zone บางนา", "Zone พัทยา", "Zone ระยอง"],
-            "RH3": ["Zone เชียงใหม่", "Zone นครสวรรค์", "Zone นนทบุรี", "Zone พิษณุโลก", "Zone อยุธยา"],
-            "RH4": ["Zone ดอนเมือง", "Zone นครราชสีมา", "Zone สระบุรี", "Zone อุดรธานี", "Zone อุบลราชธานี"],
-            "RH5": ["Zone ภูเก็ต", "Zone ราชบุรี", "Zone สมุทรสาคร", "Zone สุราษฎร์ธานี", "Zone หาดใหญ่"]
-        };
-
-        const insuranceTypes = [
-            "ประกันชีวิต (คุ้มครองตลอดชีพ/ชั่วระยะเวลา)",
-            "ประกันสะสมทรัพย์",
-            "ประกันสุขภาพ (Health)",
-            "ประกันโรคร้ายแรง (CI)",
-            "ประกันอุบัติเหตุ (PA)",
-            "ประกันบำนาญ"
-        ];
-
-        // --- STATE ---
-        let appState = {
-            emp: null,
-            cust: null,
-            risks: [],
-            stats: {},
-            aiStrategies: null // New State for AI results
-        };
-
-        // --- INIT ---
-        window.onload = function() {
-            setTimeout(() => {
-                document.getElementById('loading-spinner').classList.add('hidden');
-                document.getElementById('passcode-area').classList.remove('hidden');
-                document.getElementById('passcode-input').focus();
-            }, 2000); // 2 sec Splash
-        };
-
-        // --- 1. ACCESS CONTROL (Passcode Strict Mode) ---
-        function checkPasscode() {
-            const input = document.getElementById('passcode-input').value.trim();
-            // Case-Insensitive Check
-            if (input.toLowerCase() === "mama") {
-                document.getElementById('view-splash').classList.add('hidden');
-                document.getElementById('main-container').classList.remove('hidden');
-                
-                const savedEmp = localStorage.getItem('caas_emp');
-                if(savedEmp) {
-                    appState.emp = JSON.parse(savedEmp);
-                    updateHeader();
-                    navTo('input');
-                } else {
-                    navTo('login');
-                }
-            } else {
-                Swal.fire({ 
-                    icon: 'error', 
-                    title: 'รหัสผ่านไม่ถูกต้อง', 
-                    text: 'กรุณาลองใหม่อีกครั้ง', 
-                    timer: 1500, 
-                    showConfirmButton: false 
-                });
-                document.getElementById('passcode-input').value = '';
-            }
-        }
-
-        // --- NAVIGATION ---
-        function navTo(viewId) {
-            ['login', 'input', 'dashboard', 'processing'].forEach(v => document.getElementById(`view-${v}`).classList.add('hidden'));
-            const target = document.getElementById(`view-${viewId}`);
-            target.classList.remove('hidden');
-            if(viewId === 'input' || viewId === 'login') target.classList.add('slide-up');
-            if(viewId === 'dashboard') target.classList.add('fade-in');
-            
-            // Scroll to top
-            document.getElementById('main-container').scrollTop = 0;
-        }
-
-        function resetSystem() {
-            Swal.fire({
-                title: 'ออกจากระบบ?',
-                text: "ข้อมูลลูกค้าปัจจุบันจะถูกล้าง",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                confirmButtonText: 'ยืนยัน',
-                cancelButtonText: 'ยกเลิก'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    // Mandatory Alert Before End
-                    Swal.fire({
-                        icon: 'info',
-                        title: 'ระบบไม่บันทึกข้อมูลลูกค้า',
-                        text: 'ข้อมูลทั้งหมดจะถูกลบเพื่อความปลอดภัย',
-                        confirmButtonText: 'ตกลง'
-                    }).then(() => {
-                        localStorage.removeItem('caas_emp');
-                        location.reload();
-                    });
-                }
-            });
-        }
-
-        // --- 2. EMP LOGIC (No Name, Numeric ID Only) ---
-        function validateEmpId(input) {
-            // Remove any non-numeric characters
-            input.value = input.value.replace(/[^0-9]/g, '');
-        }
-
-        function updateZones() {
-            const rh = document.getElementById('empRH').value;
-            const zSelect = document.getElementById('empZone');
-            zSelect.innerHTML = '<option value="">เลือก Zone</option>';
-            zSelect.disabled = true;
-            
-            if (rh && rhData[rh]) {
-                zSelect.disabled = false;
-                rhData[rh].forEach(z => {
-                    zSelect.innerHTML += `<option value="${z}">${z}</option>`;
-                });
-            }
-        }
-
-        function handleEmpLogin(e) {
-            e.preventDefault();
-            const emp = {
-                // Name Removed
-                id: document.getElementById('empId').value,
-                job: document.getElementById('empJob').value,
-                rh: document.getElementById('empRH').value,
-                zone: document.getElementById('empZone').value
-            };
-            appState.emp = emp;
-            localStorage.setItem('caas_emp', JSON.stringify(emp));
-            updateHeader();
-            navTo('input');
-        }
-
-        function updateHeader() {
-            document.getElementById('main-header').classList.remove('hidden');
-            // Show Job instead of Name
-            document.getElementById('header-emp-job').innerText = appState.emp.job;
-            document.getElementById('header-emp-zone').innerText = `${appState.emp.rh} | ${appState.emp.zone}`;
-        }
-
-        // --- 3. INPUT FORM LOGIC ---
-        function toggleBizSection() {
-            const job = document.getElementById('custJob').value;
-            const bizSec = document.getElementById('sec-biz');
-            if (job === "เจ้าของกิจการ") bizSec.classList.remove('hidden');
-            else bizSec.classList.add('hidden');
-        }
-
-        function validateNumber(input) {
-            const val = parseFloat(input.value);
-            const err = input.nextElementSibling;
-            
-            if (input.value !== "" && isNaN(val)) {
-                input.classList.add('error');
-                if(err && err.classList.contains('error-text')) err.style.display = 'block';
-                input.value = ""; 
-                const Toast = Swal.mixin({ toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
-                Toast.fire({ icon: 'error', title: 'กรุณากรอกเฉพาะตัวเลข' });
-            } else {
-                input.classList.remove('error');
-                if(err && err.classList.contains('error-text')) err.style.display = 'none';
-            }
-        }
-
-        function calcYearly() {
-            const m = parseFloat(document.getElementById('custIncome').value) || 0;
-            const y = m * 12;
-            document.getElementById('displayYearly').innerText = y.toLocaleString();
-        }
-
-        // --- 3.1 Family Dynamic Child Rows ---
-        function generateChildRows() {
-            const count = parseInt(document.getElementById('childCount').value) || 0;
-            const container = document.getElementById('child-details-container');
-            container.innerHTML = ''; // Clear existing
-
-            for(let i=1; i<=count; i++) {
-                const row = document.createElement('div');
-                row.className = "grid grid-cols-2 gap-3 p-3 bg-slate-50 border border-slate-100 rounded-lg animate-[fadeIn_0.3s_ease-in]";
-                row.innerHTML = `
-                    <div>
-                        <label class="inp-label text-xs">อายุบุตรคนที่ ${i} (ปี)</label>
-                        <input type="number" class="inp-field text-sm child-age" placeholder="อายุ" required oninput="validateNumber(this)">
-                    </div>
-                    <div>
-                        <label class="inp-label text-xs">สถานะบุตรคนที่ ${i}</label>
-                        <select class="inp-field text-sm child-status">
-                            <option value="studying">เรียนอยู่</option>
-                            <option value="working">ทำงานแล้ว</option>
-                        </select>
-                    </div>
-                `;
-                container.appendChild(row);
-            }
-        }
-
-        function addPolicyRow() {
-            const container = document.getElementById('policy-container');
-            document.getElementById('empty-policy-msg').style.display = 'none';
-            
-            const id = Date.now();
-            const div = document.createElement('div');
-            div.className = "bg-slate-50 p-3 rounded-lg border border-slate-200 relative fade-in policy-row mb-2";
-            div.id = `pol-${id}`;
-            div.innerHTML = `
-                <button type="button" onclick="removePolicy('${id}')" class="absolute top-2 right-2 text-slate-400 hover:text-red-500 transition-colors"><i class="fa-solid fa-trash"></i></button>
-                <div class="grid grid-cols-1 gap-2 pr-6">
-                    <select class="inp-field text-sm pol-type">
-                        <option value="" disabled selected>เลือกประเภทประกัน</option>
-                        ${insuranceTypes.map(t => `<option value="${t}">${t}</option>`).join('')}
-                    </select>
-                    <div class="grid grid-cols-2 gap-2">
-                        <!-- Validation: Mandatory Sum Insured -->
-                        <div>
-                            <input type="number" class="inp-field text-sm pol-sum" placeholder="ทุนประกัน (บังคับ)" oninput="validateNumber(this)">
-                        </div>
-                        <input type="number" class="inp-field text-sm pol-prem" placeholder="เบี้ยต่อปี" oninput="validateNumber(this)">
-                    </div>
-                </div>
-            `;
-            container.appendChild(div);
-        }
-
-        function removePolicy(id) {
-            document.getElementById(`pol-${id}`).remove();
-            if(document.getElementById('policy-container').children.length === 0) {
-                document.getElementById('empty-policy-msg').style.display = 'block';
-            }
-        }
-
-        function clearForm() {
-            document.getElementById('form-customer').reset();
-            document.getElementById('policy-container').innerHTML = '';
-            document.getElementById('child-details-container').innerHTML = '';
-            document.getElementById('empty-policy-msg').style.display = 'block';
-            document.getElementById('sec-biz').classList.add('hidden');
-            document.getElementById('displayYearly').innerText = '0';
-        }
-
-        // --- 4. ANALYSIS ENGINE (AI + FALLBACK) ---
-        
-
-        
-        
-        async function startAnalysis() {
-            // Check Required Fields
-            const reqFields = ['custName', 'custAge', 'custIncome'];
-            for (let id of reqFields) {
-                if (!document.getElementById(id).value) {
-                    Swal.fire({ icon: 'warning', title: 'ข้อมูลไม่ครบถ้วน', text: 'กรุณากรอกข้อมูลสำคัญ (ชื่อ, อายุ, รายได้) ให้ครบถ้วน' });
-                    return;
-                }
-            }
-
-            // Strict Validation: Policy Sum Insured
-            const polSums = document.querySelectorAll('.pol-sum');
-            let policyValid = true;
-            polSums.forEach(inp => {
-                if(!inp.value) policyValid = false;
-            });
-            if(!policyValid) {
-                Swal.fire({ icon: 'warning', title: 'ข้อมูลประกันไม่ครบ', text: 'กรุณาระบุทุนประกันสำหรับทุกกรมธรรม์ที่เพิ่ม' });
-                return;
-            }
-
-            navTo('processing');
-
-            // NEW: AI Async Flow
-            try {
-                // Gather Data first (Common for both AI and Legacy)
-                const d = gatherCustomerData();
-                appState.cust = d; // Basic info
-                
-                // Calculate Math Stats (Always uses legacy logic for hard numbers)
-                calculateMathStats(d);
-                
-                // Try AI
-                const aiResult = await analyzeWithGemini(d);
-// DEBUG ON SCREEN (iPad friendly)
-document.body.insertAdjacentHTML(
-  'beforeend',
-  `<pre style="white-space:pre-wrap;font-size:12px;background:#000;color:#0f0;padding:10px">
-AI RESULT RAW >>> ${JSON.stringify(aiResult, null, 2)}
-</pre>`
-);
-
-if (aiResult) {
-  mapAIResultToLegacyFormat(aiResult, d);
-}
-                     // Map AI Result
-                    mapAIResultToLegacyFormat(aiResult, d);
-                } else {
-                    throw new Error("Empty AI Result");
-                }
-                
-            } catch (e) {
-                console.warn("AI failed, fallback to rule-based", e);
-                // 🔁 Fallback (Logic เดิม)
-                const d = appState.cust || gatherCustomerData();
-                performLegacyAnalysis(d);
-            }
-
-            // Render Results
-            navTo('dashboard');
-            renderDashboard(); // Will adapt to AI content if present
-            generateRadarChart(); 
-        }
-
-        // 4.2 Helper: Gather Data (Extracted from old performAnalysis)
-        function gatherCustomerData() {
-            const d = {
-                name: document.getElementById('custName').value,
-                age: parseFloat(document.getElementById('custAge').value),
-                gender: document.getElementById('custGender').value,
-                job: document.getElementById('custJob').value,
-                mIncome: parseFloat(document.getElementById('custIncome').value)||0,
-                welfare: document.getElementById('custWelfare').value,
-                welfareAmt: parseFloat(document.getElementById('welfareAmount').value)||0,
-                // Biz
-                bizType: document.getElementById('bizType').value,
-                bizProfit: parseFloat(document.getElementById('bizProfit').value)||0,
-                // Fam
-                status: document.getElementById('famStatus').value,
-                role: document.getElementById('incomeRole').value,
-                childCount: parseFloat(document.getElementById('childCount').value)||0,
-                hasDep: document.querySelector('input[name="hasDependent"]:checked').value === 'yes',
-                // Fin
-                savingCASA: parseFloat(document.getElementById('finSavingCASA').value)||0,
-                savingFixed: parseFloat(document.getElementById('finSavingFixed').value)||0,
-                investStock: parseFloat(document.getElementById('finInvestStock').value)||0,
-                investFund: parseFloat(document.getElementById('finInvestFund').value)||0,
-                // Debt
-                debt: {
-                    home: parseFloat(document.getElementById('debtHome').value)||0,
-                    car: parseFloat(document.getElementById('debtCar').value)||0,
-                    personal: parseFloat(document.getElementById('debtPersonal').value)||0
-                }
-            };
-            
-            // Calculated Values
-            d.yIncome = (d.mIncome * 12) + d.bizProfit;
-            d.totalDebt = d.debt.home + d.debt.car + d.debt.personal;
-            d.totalAsset = d.savingCASA + d.savingFixed + d.investStock + d.investFund;
-            d.netWorth = d.totalAsset - d.totalDebt;
-            d.liquid = d.savingCASA + d.savingFixed;
-
-            // Policy Sums
-            const polRows = document.querySelectorAll('.policy-row');
-            let sums = { life:0, health:0, ci:0, pa:0, pens:0 };
-            polRows.forEach(row => {
-                const type = row.querySelector('.pol-type').value;
-                const sum = parseFloat(row.querySelector('.pol-sum').value)||0;
-                if(type.includes('ชีวิต') || type.includes('สะสมทรัพย์')) sums.life += sum;
-                if(type.includes('สุขภาพ')) sums.health += sum;
-                if(type.includes('โรคร้ายแรง')) sums.ci += sum;
-                if(type.includes('บำนาญ')) sums.pens += sum;
-            });
-            d.sums = sums;
-
-            // Child stats
-            let childrenStudying = 0;
-            document.querySelectorAll('.child-status').forEach(sel => {
-                if(sel.value === 'studying') childrenStudying++;
-            });
-            d.childrenStudying = childrenStudying;
-
-            return d;
-        }
-
-        // 4.3 Helper: Calculate Math Stats (Always deterministic)
-        function calculateMathStats(d) {
-             // Debt Risk
-            let debtRatio = d.yIncome > 0 ? (d.totalDebt / d.yIncome) * 100 : 0;
-            
-            // Liquidity Risk
-            let monthlyExp = d.mIncome * 0.7;
-            let liqMonths = monthlyExp > 0 ? d.liquid / monthlyExp : 0;
-
-            // Yield Suggestion Flag
-            let yieldSuggestion = false;
-            if (d.savingCASA > 0 && d.savingFixed > 0) {
-                 if (d.savingCASA > (d.savingFixed * 3)) yieldSuggestion = true;
-            } else if (d.savingCASA > 500000 && d.savingFixed === 0) {
-                yieldSuggestion = true;
-            }
-
-            // Risk Appetite
-            let riskAppetite = 'Conservative';
-            const totalInvest = d.investStock + d.investFund;
-            if (totalInvest > 0) {
-                if ((d.investStock / totalInvest) > 0.6) riskAppetite = 'Aggressive';
-                else riskAppetite = 'Moderate';
-            }
-
-            appState.stats = { debtRatio, liqMonths, yieldSuggestion, riskAppetite };
-        }
-
-        // 4.4 AI: Call Gemini
-async function analyzeWithGemini(inputData) {
-    const res = await fetch(
-        "https://uvlyxomlvdlemobvquku.supabase.co/functions/v1/smooth-endpoint",
-        {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV2bHl4b21sdmRsZW1vYnZxdWt1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyNjgzOTEsImV4cCI6MjA4Mzg0NDM5MX0.IqG4yFU8T_gNl1vZ9Cl6iiCX8na06y_qSWeopg3guSA"
-            },
-            body: JSON.stringify({
-                prompt: buildAIPrompt(inputData)
-            })
-        }
-    );
-
-    if (!res.ok) throw new Error("Edge Function error");
-
-    const result = await res.json();
-    return result;
+/* ===== DATA ===== */
+function gatherCustomerData(){
+  return {
+    name: custName.value.trim(),
+    age: Number(custAge.value),
+    income: Number(custIncome.value),
+    job: custJob.value,
+    saving: Number(saving.value),
+    fund: Number(fund.value),
+    family: family.value,
+    insurance: insurance.value
+  };
 }
 
-        // 4.5 AI: Build Prompt
-        function buildAIPrompt(inputData) {
-            return `
-You are a professional financial analysis assistant.
+/* ===== PROMPT ===== */
+function buildAIPrompt(data){
+  return `
+คุณคือที่ปรึกษาทางการเงิน
+ข้อมูลลูกค้า:
+ชื่อ: ${data.name}
+อายุ: ${data.age}
+รายได้: ${data.income}
+อาชีพ: ${data.job}
+เงินฝาก: ${data.saving}
+กองทุน: ${data.fund}
+ครอบครัว: ${data.family}
+ประกันที่มี: ${data.insurance}
 
-Rules:
-- Use ALL provided data.
-- Do NOT ignore any field.
-- Do NOT invent data.
-- Return JSON ONLY.
-- Risk types must be EXACTLY these 5 strings: 'Income Protection', 'Health Coverage', 'Retirement Wealth', 'Debt Management', 'Liquidity'.
-
-Analyze the following customer data:
-${JSON.stringify(inputData, null, 2)}
-
-Return JSON in this format:
-{
-  "risks": [
-    { 
-      "type": "Income Protection", 
-      "level": "Low | Medium | High | Critical", 
-      "reason": "Explain why based on data" 
-    }
-  ],
-  "recommendations": ["Strategy 1", "Strategy 2", "Strategy 3"],
-  "summary": "Short executive summary in Thai"
-}
+ช่วยวิเคราะห์และแนะนำประกันที่เหมาะสม
+ตอบเป็น bullet สั้น ๆ ชัดเจน
 `;
-        }
+}
 
-        // 4.6 AI: Map to Legacy Format
-        function mapAIResultToLegacyFormat(aiResult, d) {
-            // Map text levels to scores for Radar Chart
-            const levelMap = { 'Low': 20, 'Medium': 50, 'High': 80, 'Critical': 95 };
-            
-            // Ensure all 5 risks are present
-            const requiredRisks = ['Income Protection', 'Health Coverage', 'Retirement Wealth', 'Debt Management', 'Liquidity'];
-            
-            let risks = [];
-            requiredRisks.forEach(reqType => {
-                const found = aiResult.risks.find(r => r.type === reqType);
-                if (found) {
-                    risks.push({
-                        name: found.type,
-                        score: levelMap[found.level] || 50, // Default to 50 if unknown
-                        desc: found.reason
-                    });
-                } else {
-                    // Fallback if AI missed one (shouldn't happen with strict prompt)
-                    risks.push({ name: reqType, score: 20, desc: 'AI did not evaluate' });
-                }
-            });
+/* ===== AI CALL (Supabase Edge Function) ===== */
+async function analyzeWithGemini(inputData){
+  const res = await fetch(
+    "https://uvlyxomlvdlemobvquku.supabase.co/functions/v1/smooth-endpoint",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV2bHl4b21sdmRsZW1vYnZxdWt1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgyNjgzOTEsImV4cCI6MjA4Mzg0NDM5MX0.IqG4yFU8T_gNl1vZ9Cl6iiCX8na06y_qSWeopg3guSA"
+      },
+      body: JSON.stringify({
+        prompt: buildAIPrompt(inputData)
+      })
+    }
+  );
 
-            appState.risks = risks;
-            appState.cust = d;
-            // Store AI recommendations for rendering
-            appState.aiStrategies = aiResult.recommendations; 
-        }
+  if(!res.ok) throw new Error("Edge Function Error");
+  return await res.json();
+}
 
-        // 4.7 FALLBACK: Legacy Logic (Preserved)
-        function performLegacyAnalysis(d) {
-            // Recalculate everything to be safe
-            appState.cust = d;
-            calculateMathStats(d); // Stats are shared
+/* ===== MAIN ===== */
+async function startAnalysis(){
+  if(!custName.value || !custAge.value || !custIncome.value){
+    Swal.fire('ข้อมูลไม่ครบ','กรุณากรอกข้อมูลหลักให้ครบ','warning');
+    return;
+  }
 
-            // B. Risk Logic Engine (Rule-based)
-            let risks = [];
+  document.getElementById('view-processing').classList.remove('hidden');
 
-            // 1. Income Risk
-            let incomeScore = 20; 
-            if (d.role === 'main') incomeScore += 30;
-            if (d.childrenStudying > 0) incomeScore += (d.childrenStudying * 10);
-            if (d.hasDep) incomeScore += 10;
-            if (d.job === 'เจ้าของกิจการ' || d.job === 'อาชีพอิสระ') incomeScore += 20; 
-            let incomeProtectionYears = d.yIncome > 0 ? d.sums.life / d.yIncome : 0;
-            if (incomeProtectionYears >= 5) incomeScore -= 50;
-            else if (incomeProtectionYears >= 3) incomeScore -= 30;
-            else if (incomeProtectionYears >= 1) incomeScore -= 10;
-            risks.push({ name: 'Income Protection', score: clamp(incomeScore), desc: 'ความเสี่ยงด้านการขาดรายได้' });
+  try{
+    const data = gatherCustomerData();
+    appState.cust = data;
 
-            // 2. Health Risk
-            let healthScore = 20;
-            if (d.age > 45) healthScore += 30;
-            else if (d.age > 35) healthScore += 15;
-            if (d.childrenStudying > 0) healthScore += 10; 
-            if (d.welfare === 'ไม่มี' || d.welfare === 'มี - วงเงินต่ำ') healthScore += 30;
-            else if (d.welfare === 'มี - วงเงินสูง') healthScore -= 20;
-            if (d.sums.health > 1000000) healthScore -= 40;
-            else if (d.sums.health > 500000) healthScore -= 20;
-            risks.push({ name: 'Health Coverage', score: clamp(healthScore), desc: 'ความเพียงพอค่ารักษาพยาบาล' });
+    const ai = await analyzeWithGemini(data);
+    appState.aiResult = ai.recommendations || [];
 
-            // 3. Retirement Risk
-            let retScore = 20;
-            if (d.age > 50) retScore += 50;
-            else if (d.age > 40) retScore += 30;
-            else if (d.age > 30) retScore += 10;
-            let wealthRatio = d.yIncome > 0 ? (d.liquid + d.investStock + d.investFund + d.sums.pens) / d.yIncome : 0;
-            if (wealthRatio > 5) retScore -= 50;
-            else if (wealthRatio > 2) retScore -= 30;
-            risks.push({ name: 'Retirement Wealth', score: clamp(retScore), desc: 'ความพร้อมเพื่อการเกษียณ' });
+  } catch {
+    appState.aiResult = ['ไม่สามารถวิเคราะห์ AI ได้ในขณะนี้'];
+  }
 
-            // 4. Debt Risk
-            let debtScore = 10;
-            if (appState.stats.debtRatio > 300) debtScore = 95; 
-            else if (appState.stats.debtRatio > 100) debtScore = 70;
-            else if (appState.stats.debtRatio > 50) debtScore = 40;
-            risks.push({ name: 'Debt Management', score: clamp(debtScore), desc: 'ภาระหนี้สินคงค้าง' });
+  renderResult();
+  document.getElementById('view-processing').classList.add('hidden');
+  document.getElementById('view-result').classList.remove('hidden');
+}
 
-            // 5. Liquidity Risk
-            let liqScore = 10;
-            if (appState.stats.liqMonths < 1) liqScore = 90;
-            else if (appState.stats.liqMonths < 3) liqScore = 60;
-            else if (appState.stats.liqMonths < 6) liqScore = 30;
-            risks.push({ name: 'Liquidity', score: clamp(liqScore), desc: 'สภาพคล่องฉุกเฉิน' });
+/* ===== RENDER ===== */
+function renderResult(){
+  res-name.innerText = appState.cust.name;
+  res-meta.innerText = `อายุ ${appState.cust.age} ปี | รายได้ ${appState.cust.income.toLocaleString()} บาท`;
 
-            appState.risks = risks;
-            appState.aiStrategies = null; // Clear AI strategies
-        }
+  recommendation-list.innerHTML = '';
+  appState.aiResult.forEach(r=>{
+    recommendation-list.innerHTML += `<div class="p-3 bg-slate-100 rounded">${r}</div>`;
+  });
+}
 
-        function clamp(num) {
-            return Math.min(100, Math.max(0, num));
-        }
+/* ===== PDF ===== */
+function generatePDF(){
+  html2pdf().from(document.getElementById('view-result')).set({
+    filename:`CAAS_${appState.cust.name}.pdf`,
+    html2canvas:{scale:2}
+  }).save();
+}
+</script>
 
-        // --- 5. RENDER DASHBOARD ---
-        function renderDashboard() {
-            const d = appState.cust;
-            const r = appState.risks;
-            const s = appState.stats;
-            
-            // Header Stats
-            document.getElementById('res-name').innerText = d.name;
-            document.getElementById('res-meta').innerText = `อายุ ${d.age} ปี | ${d.job}`;
-            
-            // Wealth Summary
-            document.getElementById('res-asset').innerText = d.totalAsset.toLocaleString();
-            document.getElementById('res-debt').innerText = d.totalDebt.toLocaleString();
-            document.getElementById('res-networth').innerText = d.netWorth.toLocaleString();
-            
-            // Avg Score
-            const avgScore = Math.round(r.reduce((a,b)=>a+b.score,0)/r.length);
-            document.getElementById('res-score').innerText = avgScore + '/100';
-
-            // Top Risks (Sort Desc)
-            const container = document.getElementById('top-risks-container');
-            container.innerHTML = '';
-            const sortedRisks = [...r].sort((a,b) => b.score - a.score).slice(0, 3);
-            
-            if(sortedRisks[0].score < 40) {
-                 container.innerHTML = '<div class="text-green-600 text-center py-4 bg-green-50 rounded-xl"><i class="fa-solid fa-circle-check text-2xl mb-2"></i><br>สุขภาพการเงินอยู่ในเกณฑ์ดีเยี่ยม</div>';
-            } else {
-                sortedRisks.forEach(risk => {
-                    let color = 'bg-yellow-400';
-                    let label = 'Medium';
-                    if(risk.score >= 80) { color = 'bg-red-500'; label = 'Critical'; }
-                    else if(risk.score >= 50) { color = 'bg-orange-500'; label = 'High'; }
-
-                    container.innerHTML += `
-                        <div class="relative">
-                            <div class="flex justify-between items-end mb-1">
-                                <span class="font-bold text-slate-700">${risk.name}</span>
-                                <span class="text-[10px] px-2 py-0.5 rounded text-white ${color} font-bold shadow-sm">${label}</span>
-                            </div>
-                            <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
-                                <div class="${color} h-2.5 rounded-full" style="width: ${risk.score}%"></div>
-                            </div>
-                            <div class="text-xs text-slate-400 mt-1 flex items-center gap-1"><i class="fa-solid fa-info-circle"></i> ${risk.desc}</div>
-                        </div>
-                    `;
-                });
-            }
-
-            // Ratios
-            // Debt
-            const dRat = s.debtRatio;
-            let dColor = 'bg-green-500', dText = 'Safe';
-            if(dRat > 100) { dColor = 'bg-red-500'; dText = 'Danger'; }
-            else if(dRat > 50) { dColor = 'bg-orange-400'; dText = 'Watch'; }
-            
-            document.getElementById('val-debt').innerText = Math.round(dRat) + '%';
-            document.getElementById('bar-debt').className = `${dColor} h-2 rounded-full transition-all duration-1000`;
-            document.getElementById('bar-debt').style.width = Math.min(100, dRat/2) + '%'; 
-            document.getElementById('badge-debt').innerText = dText;
-            document.getElementById('badge-debt').className = `text-[10px] px-2 py-0.5 rounded font-bold text-white ${dColor}`;
-
-            // Liquidity
-            const lMon = s.liqMonths;
-            let lColor = 'bg-green-500', lText = 'Good';
-            if(lMon < 1) { lColor = 'bg-red-500'; lText = 'Critical'; }
-            else if(lMon < 3) { lColor = 'bg-orange-400'; lText = 'Low'; }
-            
-            document.getElementById('val-liq').innerText = lMon.toFixed(1) + ' เดือน';
-            document.getElementById('bar-liq').className = `${lColor} h-2 rounded-full transition-all duration-1000`;
-            document.getElementById('bar-liq').style.width = Math.min(100, (lMon/6)*100) + '%';
-            document.getElementById('badge-liq').innerText = lText;
-            document.getElementById('badge-liq').className = `text-[10px] px-2 py-0.5 rounded font-bold text-white ${lColor}`;
-
-            // Recommendation Logic (Mixed AI or Legacy)
-            const recDiv = document.getElementById('recommendation-list');
-            const recHeader = recDiv.previousElementSibling; // H3 Header
-            
-            recDiv.innerHTML = '';
-            
-            if (appState.aiStrategies && appState.aiStrategies.length > 0) {
-                // --- CASE 1: AI Result ---
-                console.log("Rendering AI Result");
-                
-                // Update Header to show Gemini
-                recHeader.innerHTML = '<i class="fa-solid fa-robot text-brand-500"></i> คำแนะนำจาก Gemini AI';
-                
-                // Render AI Strategies
-                appState.aiStrategies.forEach(st => {
-                    recDiv.innerHTML += `<div class="flex gap-2 text-sm text-slate-700 bg-white p-2 rounded border border-slate-100 shadow-sm"><i class="fa-solid fa-robot text-brand-500 mt-0.5"></i> <div>${st}</div></div>`;
-                });
-            } else {
-                // --- CASE 2: Legacy Fallback ---
-                console.log("Rendering Legacy Result");
-
-                // Update Header to show System
-                recHeader.innerHTML = '<i class="fa-solid fa-lightbulb text-yellow-500"></i> คำแนะนำจากระบบ (Rule-Based)';
-
-                // Fallback: Legacy Logic
-                if(s.yieldSuggestion) {
-                    recDiv.innerHTML += `<div class="flex gap-2 text-sm text-slate-700 bg-white p-2 rounded border border-slate-100 shadow-sm"><i class="fa-solid fa-chart-line text-brand-500 mt-0.5"></i> <div><b>เพิ่มผลตอบแทน (Yield):</b> ท่านมีเงินฝากออมทรัพย์สัดส่วนสูง ควรแบ่งไปลงทุนหรือฝากประจำเพื่อเพิ่มดอกเบี้ย</div></div>`;
-                }
-
-                const incRisk = r.find(x=>x.name==='Income Protection');
-                if(incRisk && incRisk.score >= 50) {
-                    recDiv.innerHTML += `<div class="flex gap-2 text-sm text-slate-700 bg-white p-2 rounded border border-slate-100 shadow-sm"><i class="fa-solid fa-user-shield text-brand-500 mt-0.5"></i> <div><b>คุ้มครองรายได้:</b> ภาระค่าใช้จ่ายครอบครัวสูง ควรพิจารณาประกันชีวิตให้ครอบคลุมรายได้ 3-5 ปี <span class="text-brand-600 font-bold">[ประกันชีวิตตลอดชีพ]</span></div></div>`;
-                }
-
-                const hltRisk = r.find(x=>x.name==='Health Coverage');
-                if(hltRisk && hltRisk.score >= 50) {
-                    recDiv.innerHTML += `<div class="flex gap-2 text-sm text-slate-700 bg-white p-2 rounded border border-slate-100 shadow-sm"><i class="fa-solid fa-heart-pulse text-red-500 mt-0.5"></i> <div><b>ค่ารักษาพยาบาล:</b> สวัสดิการที่มีอาจไม่เพียงพอ (CI Risk) ควรเสริมประกันสุขภาพเหมาจ่ายหรือโรคร้ายแรง <span class="text-brand-600 font-bold">[ประกันสุขภาพแบบเหมาจ่าย]</span></div></div>`;
-                }
-            }
-
-            if(recDiv.innerHTML === '') recDiv.innerHTML = '<div class="text-green-600 font-bold flex items-center gap-2"><i class="fa-solid fa-check-circle"></i> ยอดเยี่ยม! ท่านมีการวางแผนการเงินที่ดี</div>';
-        }
-
-        // --- CHART & PDF ---
-        let radarChart = null;
-        function generateRadarChart() {
-            const ctx = document.getElementById('radarChart').getContext('2d');
-            if(radarChart) radarChart.destroy();
-
-            radarChart = new Chart(ctx, {
-                type: 'radar',
-                data: {
-                    labels: appState.risks.map(r => r.name),
-                    datasets: [{
-                        label: 'ระดับความเสี่ยง (Risk Score)',
-                        data: appState.risks.map(r => r.score),
-                        backgroundColor: 'rgba(14, 165, 233, 0.2)',
-                        borderColor: '#0ea5e9',
-                        pointBackgroundColor: '#0284c7',
-                        pointBorderColor: '#fff',
-                        pointHoverBackgroundColor: '#fff',
-                        pointHoverBorderColor: '#0284c7',
-                        borderWidth: 2
-                    }]
-                },
-                options: {
-                    maintainAspectRatio: false,
-                    scales: {
-                        r: {
-                            angleLines: { color: '#e2e8f0' },
-                            grid: { color: '#e2e8f0' },
-                            pointLabels: { font: { family: 'Prompt', size: 10 }, color: '#64748b' },
-                            suggestedMin: 0,
-                            suggestedMax: 100,
-                            ticks: { display: false, stepSize: 20 }
-                        }
-                    },
-                    plugins: { legend: { display: false } }
-                }
-            });
-        }
-
-        function backToInput() { navTo('input'); }
-
-        async function generatePDF() {
-            // Show Loading Toast
-            Swal.fire({ 
-                title: 'กำลังสร้างไฟล์ PDF...', 
-                html: 'กรุณารอสักครู่ ระบบกำลังจัดทำรายงาน',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading() 
-            });
-
-            // Target Element
-            const element = document.getElementById('view-dashboard');
-            
-            // Options for html2pdf
-            const opt = {
-                margin: 0,
-                filename: `CAAS_${appState.cust.name}_${new Date().toISOString().slice(0,10)}.pdf`,
-                image: { type: 'jpeg', quality: 0.98 },
-                html2canvas: { scale: 2, useCORS: true, scrollY: 0 },
-                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-            };
-
-            // Force Chart Size before print
-            const chartCanvas = document.getElementById('radarChart');
-            chartCanvas.style.width = '100%';
-            chartCanvas.style.height = '300px';
-
-            try {
-                // Wait for render
-                await new Promise(r => setTimeout(r, 500));
-                
-                await html2pdf().set(opt).from(element).save();
-                
-                Swal.close();
-                Swal.fire({ icon: 'success', title: 'ดาวน์โหลดสำเร็จ', text: 'กรุณาตรวจสอบไฟล์ PDF ของท่าน', timer: 2000, showConfirmButton: false });
-            } catch (error) {
-                console.error(error);
-                Swal.fire({ icon: 'error', title: 'เกิดข้อผิดพลาด', text: 'ไม่สามารถสร้าง PDF ได้' });
-            }
-        }
-
-    </script>
 </body>
 </html>
-
-
-
